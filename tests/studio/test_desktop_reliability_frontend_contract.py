@@ -334,6 +334,7 @@ def test_gallery_video_links_are_absolute_and_saved_natively():
     )
 
     # The save dialog now offers these to video, not just to the audio player, and the streaming command is registered
+    # and pinned to the local backend.
     dialogs = NATIVE_DIALOGS.read_text(encoding = "utf-8")
     assert '("MPEG-4 video or audio", filter_extensions(["m4a", "mp4"]))' in dialogs
     assert '("WebM video or audio", filter_extensions(["webm"]))' in dialogs
@@ -443,6 +444,7 @@ def test_mac_dock_reopens_hidden_main_window():
 
 def test_windows_browser_guard_runs_only_in_release_builds():
     # WebView2 is not reachable from Python, so pin the release-only call that keeps refresh controls available during
+    # development.
     source = TAURI_MAIN.read_text(encoding = "utf-8")
 
     assert "fn setup_windows_browser_guards" in source
@@ -465,7 +467,7 @@ def test_desktop_manages_the_remote_password_through_the_account_dialog():
     refresh = section.split("const refreshStatus = useCallback(", 1)[1].split("}, []);", 1)[0]
     assert "mutationEpoch.current += 1;" in refresh
     assert "setPollRevision(" in refresh
-    # Initial mode sends no current password;
+    # Initial mode sends no current password; the web flow it serves keeps it.
     body = dialog.split("function changePasswordBody", 1)[1].split("function dialogCopy", 1)[0]
     assert '? [["new_password", nextPassword]]' in body
     assert '["current_password", currentPassword],' in body
@@ -633,6 +635,8 @@ def test_tauri_collapse_removes_the_icon_rail_but_web_keeps_it():
         encoding = "utf-8"
     )
     # The nudge has to move the navigation without pushing it out of the titlebar it sits in, so the button box travels
+    # with it. The container's mt-1 is deliberately not in the sum: translate-y is visual, and the margin already seats
+    # the box in the row.
     button = _titlebar_nav_button_px(TITLEBAR.read_text(encoding = "utf-8"))
     assert button is not None, "navigation button size no longer readable from buttonClass"
     blocks = _chrome_style_blocks(APP_PROVIDER.read_text(encoding = "utf-8"))
@@ -659,18 +663,20 @@ def test_fixed_sheets_start_below_the_custom_titlebar():
     # Portalled sheets read the height off <html>, so the mirror has to stay.
     assert 'set("--studio-custom-titlebar-height", usesCustomTitlebar ? "34px" : null)' in provider
 
-    # Only viewport-fixed sheets clear the titlebar;
+    # Only viewport-fixed sheets clear the titlebar; the absolute recipe block sheet sits in its own container and keeps
+    # a plain top edge.
     assert 'position === "fixed" ? VIEWPORT_TOP_EDGE : CONTAINED_TOP_EDGE' in sheet
     for side in ("left", "right", "top"):
         assert f"data-[side={side}]:top-[var(--studio-custom-titlebar-height,0px)]" in sheet
         assert f"data-[side={side}]:top-0" in sheet
 
-    # Anchor both edges so the inset shrinks the sheet;
+    # Anchor both edges so the inset shrinks the sheet; h-full would instead push its bottom past the viewport.
     for side in ("left", "right"):
         assert f"data-[side={side}]:bottom-0" in sheet
         assert f"data-[side={side}]:h-full" not in sheet
 
-    # The shared class is the only sheet offset;
+    # The shared class is the only sheet offset; a local one would double up. Dialogs still read
+    # --studio-window-chrome-top (DesktopChromeVarsEffect).
     for portalled in (
         RESEARCH_ACTIVITY_PANEL,
         RESPONSE_DETAILS_SHEET,
